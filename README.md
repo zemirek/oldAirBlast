@@ -19,3 +19,5 @@ To account for latency, this updated AirBlast goes "back in time" by the latency
 4. **Position Calculation**: To get the right `BoundingBox`, a calculation `currentTick - ping / 50` is performed. Sometimes, this calculation results in a negative value, so `Math.max(0, currentTick - ping / 50)` is used to ensure a minimum value of 0.
 
 This addon significantly improves the AirBlast experience for players with high ping, making gameplay more fair and responsive.
+
+**The config for this AirBlast is in oldairblast.yml file in ProjectKorra directory**

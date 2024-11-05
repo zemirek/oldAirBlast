@@ -6,7 +6,7 @@ This is an updated version of the old AirBlast as an addon to fix issues for hig
 
 In the original AirBlast, high-ping players experience worse AirBlasts compared to low-ping players, making some of them impossible with higher latency. Here's what happens when high-ping players attempt these "impossible" AirBlasts:
 
-- When AirBlast affects a player with 100ms ping (2 ticks), the player is still moving, but after 2 ticks, the AirBlast is already 2 blocks away from them.
+- When AirBlast affects a player with 100ms ping (2 ticks), the player moves on the server after 2 ticks, but after 2 ticks, the AirBlast is already 2 blocks away from them.
 - At this point, AirBlast doesn’t detect the player because the AirBlast has moved on, missing the high-ping player’s position.
 
 ## How This AirBlast Addon Fixes the Issue

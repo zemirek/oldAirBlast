@@ -1,13 +1,12 @@
-package me.literka;
+package me.literka.airblast;
 
 import com.projectkorra.projectkorra.BendingPlayer;
 import com.projectkorra.projectkorra.Element;
-import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.AirAbility;
 import com.projectkorra.projectkorra.ability.CoreAbility;
 import com.projectkorra.projectkorra.event.BendingReloadEvent;
 import com.projectkorra.projectkorra.event.PlayerSwingEvent;
-import org.bukkit.Bukkit;
+import me.literka.Loader;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -27,10 +26,10 @@ public class AirBlastListener implements Listener {
 
 		if (player.isSneaking() || !bPlayer.canBendIgnoreCooldowns(coreAbil) || !(coreAbil instanceof AirAbility) ||
 				!bPlayer.isElementToggled(Element.AIR) || !bPlayer.canCurrentlyBendWithWeapons() ||
-				!coreAbil.getName().equalsIgnoreCase("AirBlast"))
+				!coreAbil.getName().equalsIgnoreCase("OldAirBlast"))
 			return;
 
-		AirBlast.setOrigin(player);
+		OldAirBlast.setOrigin(player);
 	}
 
 	@EventHandler
@@ -44,10 +43,15 @@ public class AirBlastListener implements Listener {
 
 		if (!bPlayer.canBendIgnoreCooldowns(coreAbil) || !(coreAbil instanceof AirAbility) ||
 				!bPlayer.isElementToggled(Element.AIR) || !bPlayer.canCurrentlyBendWithWeapons() ||
-				!coreAbil.getName().equalsIgnoreCase("AirBlast"))
+				!coreAbil.getName().equalsIgnoreCase("OldAirBlast"))
 			return;
 
-		new AirBlast(player);
+		new OldAirBlast(player);
+	}
+
+	@EventHandler
+	public void onReload(BendingReloadEvent event) {
+		Loader.onReload();
 	}
 
 }

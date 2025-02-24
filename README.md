@@ -1,6 +1,10 @@
-# AirBlast Addon
+**This project uses the PacketEvents as a built-in dependency**
 
-This is an updated version of the old AirBlast as an addon to fix issues for high-ping players.
+[PacketEvents](https://github.com/retrooper/packetevents)
+
+# OldAirBlast Plugin
+
+This is an updated version of the old AirBlast as a plugin to fix issues for high-ping players.
 
 ## Main Issue with the Original AirBlast
 

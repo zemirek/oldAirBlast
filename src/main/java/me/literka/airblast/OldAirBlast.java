@@ -1,4 +1,4 @@
-package me.literka;
+package me.literka.airblast;
 
 import com.projectkorra.projectkorra.BendingPlayer;
 import com.projectkorra.projectkorra.GeneralMethods;
@@ -6,15 +6,14 @@ import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.ability.AddonAbility;
 import com.projectkorra.projectkorra.ability.AirAbility;
 import com.projectkorra.projectkorra.ability.FireAbility;
-import com.projectkorra.projectkorra.airbending.AirBurst;
 import com.projectkorra.projectkorra.attribute.Attribute;
 import com.projectkorra.projectkorra.command.Commands;
-import com.projectkorra.projectkorra.configuration.Config;
 import com.projectkorra.projectkorra.earthbending.lava.LavaFlow;
 import com.projectkorra.projectkorra.object.HorizontalVelocityTracker;
 import com.projectkorra.projectkorra.region.RegionProtection;
-import com.projectkorra.projectkorra.util.DamageHandler;
 import com.projectkorra.projectkorra.util.TempBlock;
+import me.literka.util.AirBlastRewind;
+import me.literka.Loader;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -25,27 +24,21 @@ import org.bukkit.block.data.type.Switch;
 import org.bukkit.block.data.type.TrapDoor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BlockIterator;
 import org.bukkit.util.Vector;
 
-import java.io.File;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class AirBlast extends AirAbility implements AddonAbility {
+public class OldAirBlast extends AirAbility implements AddonAbility {
 
 	private static final int MAX_TICKS = 10000;
 	private static final Map<Player, Location> ORIGINS = new ConcurrentHashMap<>();
 	public static final Material[] DOORS = { Material.ACACIA_DOOR, Material.BIRCH_DOOR, Material.DARK_OAK_DOOR, Material.JUNGLE_DOOR, Material.OAK_DOOR, Material.SPRUCE_DOOR };
 	public static final Material[] TDOORS = { Material.ACACIA_TRAPDOOR, Material.BIRCH_TRAPDOOR, Material.DARK_OAK_TRAPDOOR, Material.JUNGLE_TRAPDOOR, Material.OAK_TRAPDOOR, Material.SPRUCE_TRAPDOOR };
 	public static final Material[] BUTTONS = { Material.ACACIA_BUTTON, Material.BIRCH_BUTTON, Material.DARK_OAK_BUTTON, Material.JUNGLE_BUTTON, Material.OAK_BUTTON, Material.SPRUCE_BUTTON, Material.STONE_BUTTON };
-	public static Config config;
 
-	private boolean canFlickLevers;
-	private boolean canOpenDoors;
-	private boolean canPressButtons;
 	private boolean canCoolLava;
 	private boolean isFromOtherOrigin;
 	private boolean showParticles;
@@ -60,8 +53,6 @@ public class AirBlast extends AirAbility implements AddonAbility {
 	private double pushFactor;
 	@Attribute(Attribute.KNOCKBACK + "Others")
 	private double pushFactorForOthers;
-	@Attribute(Attribute.DAMAGE)
-	private double damage;
 	@Attribute(Attribute.SPEED)
 	private double speed;
 	@Attribute(Attribute.RADIUS)
@@ -69,14 +60,12 @@ public class AirBlast extends AirAbility implements AddonAbility {
 	private Location location;
 	private Location origin;
 	private Vector direction;
-	private AirBurst source;
 	private Random random;
 	private ArrayList<Block> affectedLevers;
-	private ArrayList<Entity> affectedEntities;
 
-	private AirBlastPushUtil pushUtil;
+	private AirBlastRewind airBlastRewind;
 
-	public AirBlast(Player player) {
+	public OldAirBlast(Player player) {
 		super(player);
 
 		if (bPlayer.isOnCooldown(this)) {
@@ -103,29 +92,25 @@ public class AirBlast extends AirAbility implements AddonAbility {
 		}
 		location = origin.clone();
 		bPlayer.addCooldown(this);
-		pushUtil = new AirBlastPushUtil(this);
+		airBlastRewind = new AirBlastRewind(this);
 		start();
 	}
 
 	private void setFields() {
-		particles = getConfig().getInt("Abilities.Air.AirBlast.Particles");
-		cooldown = getConfig().getLong("Abilities.Air.AirBlast.Cooldown");
-		range = getConfig().getDouble("Abilities.Air.AirBlast.Range");
-		speed = getConfig().getDouble("Abilities.Air.AirBlast.Speed");
-		range = getConfig().getDouble("Abilities.Air.AirBlast.Range");
-		radius = getConfig().getDouble("Abilities.Air.AirBlast.Radius");
-		pushFactor = getConfig().getDouble("Abilities.Air.AirBlast.Push.Self");
-		pushFactorForOthers = getConfig().getDouble("Abilities.Air.AirBlast.Push.Entities");
-		canFlickLevers = getConfig().getBoolean("Abilities.Air.AirBlast.CanFlickLevers");
-		canOpenDoors = getConfig().getBoolean("Abilities.Air.AirBlast.CanOpenDoors");
-		canPressButtons = getConfig().getBoolean("Abilities.Air.AirBlast.CanPressButtons");
-		canCoolLava = getConfig().getBoolean("Abilities.Air.AirBlast.CanCoolLava");
+		FileConfiguration c = Loader.config().get();
+		cooldown = c.getLong("Literka.OldAirBlast.Cooldown");
+		speed = c.getDouble("Literka.OldAirBlast.Speed");
+		range = c.getDouble("Literka.OldAirBlast.Range");
+		radius = c.getDouble("Literka.OldAirBlast.Radius");
+		particles = c.getInt("Literka.OldAirBlast.Particles");
+		pushFactor = c.getDouble("Literka.OldAirBlast.Push.Self");
+		pushFactorForOthers = c.getDouble("Literka.OldAirBlast.Push.Entities");
+		canCoolLava = c.getBoolean("Literka.OldAirBlast.CanCoolLava");
 
 		isFromOtherOrigin = false;
 		showParticles = true;
 		random = new Random();
 		affectedLevers = new ArrayList<>();
-		affectedEntities = new ArrayList<>();
 	}
 
 	private static void playOriginEffect(final Player player) {
@@ -140,7 +125,7 @@ public class AirBlast extends AirAbility implements AddonAbility {
 		} else if (!origin.getWorld().equals(player.getWorld())) {
 			ORIGINS.remove(player);
 			return;
-		} else if (!bPlayer.canBendIgnoreCooldowns(getAbility("AirBlast"))) {
+		} else if (!bPlayer.canBendIgnoreCooldowns(getAbility("OldAirBlast"))) {
 			ORIGINS.remove(player);
 			return;
 		} else if (origin.distanceSquared(player.getEyeLocation()) > getSelectRange() * getSelectRange()) {
@@ -166,7 +151,6 @@ public class AirBlast extends AirAbility implements AddonAbility {
 		}
 
 		ORIGINS.put(player, location);
-
 	}
 
 	private void advanceLocation() {
@@ -212,6 +196,10 @@ public class AirBlast extends AirAbility implements AddonAbility {
 	}
 
 	private void affect(final Entity entity) {
+		affect(entity, location);
+	}
+
+	public void affect(final Entity entity, Location location) {
 		if (entity instanceof Player) {
 			if (Commands.invincible.contains(((Player) entity).getName())) {
 				return;
@@ -229,8 +217,6 @@ public class AirBlast extends AirAbility implements AddonAbility {
 			}
 		}
 
-		if (source != null) knockback = pushFactor;
-
 		if (knockback == 0) return;
 
 		Vector velocity = entity.getVelocity();
@@ -245,11 +231,9 @@ public class AirBlast extends AirAbility implements AddonAbility {
 			}
 		}
 
-		if (location.getWorld().equals(origin.getWorld())) {
-			knockback *= 1 - location.distance(origin) / (2 * range);
-		}
+		knockback *= 1 - location.distance(origin) / (2 * range);
 
-		if (GeneralMethods.isSolid(entity.getLocation().add(0, -0.5, 0).getBlock()) && source == null) {
+		if (GeneralMethods.isSolid(entity.getLocation().add(0, -0.5, 0).getBlock())) {
 			knockback *= 0.5;
 		}
 
@@ -265,21 +249,7 @@ public class AirBlast extends AirAbility implements AddonAbility {
 
 		GeneralMethods.setVelocity(this, entity, velocity);
 
-		if (source != null) {
-			new HorizontalVelocityTracker(entity, player, 200l, source);
-		} else {
-			new HorizontalVelocityTracker(entity, player, 200l, this);
-		}
-
-		if (damage > 0 && entity instanceof LivingEntity && !entity.equals(player) && !affectedEntities.contains(entity)) {
-			if (source != null) {
-				DamageHandler.damageEntity(entity, damage, source);
-			} else {
-				DamageHandler.damageEntity(entity, damage, this);
-			}
-
-			affectedEntities.add(entity);
-		}
+		new HorizontalVelocityTracker(entity, player, 200l, this);
 
 		if (entity.getFireTicks() > 0) {
 			entity.getWorld().playEffect(entity.getLocation(), Effect.EXTINGUISH, 0);
@@ -331,15 +301,17 @@ public class AirBlast extends AirAbility implements AddonAbility {
 			return;
 		}
 
-		pushUtil.addLocation(location);
+		airBlastRewind.addLocation(location, radius);
 
 		for (final Entity entity : GeneralMethods.getEntitiesAroundPoint(location, radius)) {
 			if (GeneralMethods.isRegionProtectedFromBuild(this, entity.getLocation()) || ((entity instanceof Player) && Commands.invincible.contains(((Player) entity).getName()))) {
 				continue;
 			}
 
-			if (entity instanceof Player) pushUtil.addPlayer((Player) entity);
-			else affect(entity);
+			if (entity instanceof Player)
+				airBlastRewind.addPlayer((Player) entity);
+			else
+				affect(entity);
 		}
 
 		advanceLocation();
@@ -423,7 +395,7 @@ public class AirBlast extends AirAbility implements AddonAbility {
 					testblock.setBlockData(button);
 					affectedLevers.add(testblock);
 
-					Bukkit.getScheduler().runTaskLater(ProjectKorra.plugin, () -> {
+					Bukkit.getScheduler().runTaskLater(Loader.plugin, () -> {
 						button.setPowered(false);
 						testblock.setBlockData(button);
 						affectedLevers.remove(testblock);
@@ -474,7 +446,7 @@ public class AirBlast extends AirAbility implements AddonAbility {
 
 	@Override
 	public String getName() {
-		return "AirBlast";
+		return "OldAirBlast";
 	}
 
 	@Override
@@ -498,218 +470,28 @@ public class AirBlast extends AirAbility implements AddonAbility {
 	}
 
 	@Override
+	public boolean isEnabled() {
+		return Loader.config().get().getBoolean("Literka.OldAirBlast.Enabled");
+	}
+
+	@Override
 	public double getCollisionRadius() {
-		return getRadius();
-	}
-
-	public Location getOrigin() {
-		return origin;
-	}
-
-	public void setOrigin(final Location origin) {
-		this.origin = origin;
-	}
-
-	public Vector getDirection() {
-		return direction;
-	}
-
-	public void setDirection(final Vector direction) {
-		this.direction = direction;
-	}
-
-	public int getTicks() {
-		return ticks;
-	}
-
-	public void setTicks(final int ticks) {
-		this.ticks = ticks;
-	}
-
-	public double getSpeedFactor() {
-		return speedFactor;
-	}
-
-	public void setSpeedFactor(final double speedFactor) {
-		this.speedFactor = speedFactor;
-	}
-
-	public double getRange() {
-		return range;
-	}
-
-	public void setRange(final double range) {
-		this.range = range;
-	}
-
-	public double getPushFactor() {
-		return pushFactor;
-	}
-
-	public void setPushFactor(final double pushFactor) {
-		this.pushFactor = pushFactor;
-	}
-
-	public double getPushFactorForOthers() {
-		return pushFactorForOthers;
-	}
-
-	public void setPushFactorForOthers(final double pushFactorForOthers) {
-		this.pushFactorForOthers = pushFactorForOthers;
-	}
-
-	public double getDamage() {
-		return damage;
-	}
-
-	public void setDamage(final double damage) {
-		this.damage = damage;
-	}
-
-	public double getSpeed() {
-		return speed;
-	}
-
-	public void setSpeed(final double speed) {
-		this.speed = speed;
-	}
-
-	public double getRadius() {
 		return radius;
 	}
 
-	public void setRadius(final double radius) {
-		this.radius = radius;
-	}
-
-	public boolean isCanFlickLevers() {
-		return canFlickLevers;
-	}
-
-	public void setCanFlickLevers(final boolean canFlickLevers) {
-		this.canFlickLevers = canFlickLevers;
-	}
-
-	public boolean isCanOpenDoors() {
-		return canOpenDoors;
-	}
-
-	public void setCanOpenDoors(final boolean canOpenDoors) {
-		this.canOpenDoors = canOpenDoors;
-	}
-
-	public boolean isCanPressButtons() {
-		return canPressButtons;
-	}
-
-	public void setCanPressButtons(final boolean canPressButtons) {
-		this.canPressButtons = canPressButtons;
-	}
-
-	public boolean isCanCoolLava() {
-		return canCoolLava;
-	}
-
-	public void setCanCoolLava(final boolean canCoolLava) {
-		this.canCoolLava = canCoolLava;
-	}
-
-	public boolean isFromOtherOrigin() {
-		return isFromOtherOrigin;
-	}
-
-	public void setFromOtherOrigin(final boolean isFromOtherOrigin) {
-		this.isFromOtherOrigin = isFromOtherOrigin;
-	}
-
-	public boolean isShowParticles() {
-		return showParticles;
-	}
-
-	public void setShowParticles(final boolean showParticles) {
-		this.showParticles = showParticles;
-	}
-
-	public AirBurst getSource() {
-		return source;
-	}
-
-	public void setSource(final AirBurst source) {
-		this.source = source;
-	}
-
-	public ArrayList<Block> getAffectedLevers() {
-		return affectedLevers;
-	}
-
-	public ArrayList<Entity> getAffectedEntities() {
-		return affectedEntities;
-	}
-
-	public void setLocation(final Location location) {
-		this.location = location;
-	}
-
-	public void setCooldown(final long cooldown) {
-		this.cooldown = cooldown;
-	}
-
-	public int getParticles() {
-		return particles;
-	}
-
-	public void setParticles(final int particles) {
-		this.particles = particles;
-	}
-
 	public static int getSelectParticles() {
-		return getConfig().getInt("Abilities.Air.AirBlast.SelectParticles");
+		return Loader.config().get().getInt("Literka.OldAirBlast.SelectParticles");
 	}
 
 	public static double getSelectRange() {
-		return getConfig().getInt("Abilities.Air.AirBlast.SelectRange");
-	}
-
-	public static FileConfiguration getConfig() {
-		return config.get();
+		return Loader.config().get().getInt("Literka.OldAirBlast.SelectRange");
 	}
 
 	@Override
-	public void load() {
-		ProjectKorra.log.info("Enabled " + getName() + " by " + getAuthor());
-
-		config = new Config(new File("oldairblast.yml"));
-		FileConfiguration c = config.get();
-
-		c.addDefault("Abilities.Air.AirBlast.Enabled", true);
-		c.addDefault("Abilities.Air.AirBlast.Speed", 25);
-		c.addDefault("Abilities.Air.AirBlast.Range", 20);
-		c.addDefault("Abilities.Air.AirBlast.Radius", 2);
-		c.addDefault("Abilities.Air.AirBlast.SelectRange", 10);
-		c.addDefault("Abilities.Air.AirBlast.SelectParticles", 4);
-		c.addDefault("Abilities.Air.AirBlast.Particles", 6);
-		c.addDefault("Abilities.Air.AirBlast.Cooldown", 500);
-		c.addDefault("Abilities.Air.AirBlast.Push.Self", 2.5);
-		c.addDefault("Abilities.Air.AirBlast.Push.Entities", 3.5);
-		c.addDefault("Abilities.Air.AirBlast.CanFlickLevers", true);
-		c.addDefault("Abilities.Air.AirBlast.CanOpenDoors", true);
-		c.addDefault("Abilities.Air.AirBlast.CanPressButtons", true);
-		c.addDefault("Abilities.Air.AirBlast.CanCoolLava", true);
-
-		config.save();
-
-		ProjectKorra.plugin.getServer().getPluginManager().registerEvents(new AirBlastListener(), ProjectKorra.plugin);
-		ProjectKorra.plugin.getServer().getScheduler().scheduleSyncRepeatingTask(ProjectKorra.plugin, () -> {
-			AirBlast.progressOrigins();
-			AirBlastPushUtil.tickAll();
-		}, 0, 1);
-	}
+	public void load() {}
 
 	@Override
-	public void stop() {
-		ProjectKorra.log.info("Disabled " + getName() + " by " + getAuthor());
-		super.remove();
-	}
+	public void stop() {}
 
 	@Override
 	public String getAuthor() {
@@ -718,6 +500,6 @@ public class AirBlast extends AirAbility implements AddonAbility {
 
 	@Override
 	public String getVersion() {
-		return "1.0";
+		return "1.1";
 	}
 }

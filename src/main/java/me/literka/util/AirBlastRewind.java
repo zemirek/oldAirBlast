@@ -32,9 +32,8 @@ public class AirBlastRewind {
 		while (iterator.hasNext()) {
 			Player player = iterator.next();
 			RewindSnapshot rewindSnapshot = getRewindSnapshot(player);
-			if (rewindSnapshot == null) continue;
 
-			if (!player.getBoundingBox().overlaps(rewindSnapshot.box())) {
+			if (rewindSnapshot == null || !player.getBoundingBox().overlaps(rewindSnapshot.box())) {
 				iterator.remove();
 				continue;
 			}
